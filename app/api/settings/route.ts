@@ -1,0 +1,4 @@
+import {env} from 'cloudflare:workers';
+import {getDb} from '@/db';import {settings} from '@/db/schema';import {eq} from 'drizzle-orm';import {preferences} from '@/lib/planner';import {user,failure,safeWrite} from '@/lib/server';
+export async function GET(){try{const u=await user();const [p]=await getDb().select().from(settings).where(eq(settings.userId,u.userId));return Response.json({preferences:p||{start:540,end:1020,breakMinutes:10},aiConnected:Boolean((env as any).OPENAI_API_KEY),name:u.fullName?.split(' ')[0]||'there'});}catch(e){return failure(e);}}
+export async function POST(req:Request){try{safeWrite(req);const u=await user();const p=preferences.parse(await req.json());await getDb().insert(settings).values({...p,userId:u.userId}).onConflictDoUpdate({target:settings.userId,set:p});return Response.json({ok:true});}catch(e){return failure(e);}}
